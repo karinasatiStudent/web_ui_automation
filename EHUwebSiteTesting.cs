@@ -3,19 +3,28 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using System.Text.RegularExpressions;
 
+[TestFixture]
+[Parallelizable(ParallelScope.Self)]
 public class EHUwebSiteTesting
 {
     private IWebDriver driver;
     private string baseUrl = "https://en.ehuniversity.lt/";
-    public EHUwebSiteTesting()
+
+    [SetUp]
+    public void Setup()
     {
         var options = new ChromeOptions();
         options.AddArgument("--start-maximized");
-
         driver = new ChromeDriver(options);
     }
 
-    [Test]
+    [TearDown]
+    public void Teardown()
+    {
+        driver.Quit();
+    }
+
+    [Test, Category("Navigation")]
     public void Navigation()
     {
         driver.Navigate().GoToUrl(baseUrl);
@@ -29,28 +38,28 @@ public class EHUwebSiteTesting
         driver.Quit();
     }
 
-    [Test]
-    public void Search()
+    [Test, Category("Search")]
+    [TestCase("study programs", "/?s=study+programs", "Search Results study programs")]
+    public void Search(string key, string urlParams, string pageTitle)
     {
         driver.Navigate().GoToUrl(baseUrl);
         IWebElement searchMagnifier = driver.FindElement(By.CssSelector(".header-search"));
         searchMagnifier.Click();
 
         IWebElement searchBox = driver.FindElement(By.Name("s"));
-        searchBox.SendKeys("study programs");
+        searchBox.SendKeys(key);
         searchBox.Submit();
 
-        Assert.That(driver.Url, Does.Contain("/?s=study+programs"));
-        Assert.That(driver.Title, Is.EqualTo("Search Results study programs"));
+        Assert.That(driver.Url, Does.Contain(urlParams));
+        Assert.That(driver.Title, Is.EqualTo(pageTitle));
 
         string searchResultsText = driver.FindElement(By.XPath("//*[@class='content search-results']")).Text;
         Assert.That(Regex.IsMatch(searchResultsText, @"([Ss]tudy|[Pp]rograms*)"));
 
-
         driver.Quit();
     }
 
-    [Test]
+    [Test, Category("Language")]
     public void LanguageChange()
     {
         driver.Navigate().GoToUrl(baseUrl);
@@ -64,11 +73,9 @@ public class EHUwebSiteTesting
 
         string? language = driver.FindElement(By.TagName("html")).GetAttribute("lang");
         Assert.That(language, Is.EqualTo("lt-LT"));
-
-        driver.Quit();
     }
 
-    [Test]
+    [Test, Category("Contact Form")]
     public void ContactUs()
     {
         driver.Navigate().GoToUrl("https://en.ehuniversity.lt/research/projects/contact-us/");
@@ -85,9 +92,6 @@ public class EHUwebSiteTesting
         Assert.That(socialFacebook.Text, Is.EqualTo("Facebook"));
         Assert.That(socialTg.Text, Is.EqualTo("Telegram"));
         Assert.That(socialVK.Text, Is.EqualTo("VK"));
-
-
-        driver.Quit();
     }
 }
 
