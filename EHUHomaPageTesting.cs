@@ -1,6 +1,9 @@
-﻿using NUnit.Framework;
+﻿using log4net;
+using log4net.Config;
+using NUnit.Framework;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using Shouldly;
 using System.Text.RegularExpressions;
 using web_ui_automation;
 
@@ -11,15 +14,29 @@ public class EHUHomaPageTesting
     private IWebDriver driver;
     private HomePage homePage;
     private string aboutUrl = "https://en.ehuniversity.lt/about/";
-    private string ltUrl = "https://lt.ehuniversity.lt/";
+    private static readonly ILog log = LogManager.GetLogger(typeof(EHUHomaPageTesting));
 
     [SetUp]
     public void Setup()
     {
+        XmlConfigurator.Configure(new FileInfo("log4net.config"));
+        log.Info("Starting EHU Home Page Tests");
+
         var options = new ChromeOptions();
         options.AddArgument("--start-maximized");
-        driver = WebDriverSingleton.GetDriver(options);
-        homePage = new HomePage(driver);
+
+        try
+        {
+            driver = WebDriverSingleton.GetDriver(options);
+            homePage = new HomePage(driver);
+            log.Info("ChromeDriver initialized successfully.");
+        }
+        catch (Exception ex)
+        {
+            log.Fatal("Failed to initialize ChromeDriver.", ex);
+            throw;
+        }
+
         homePage.NavigateToHomePage();
     }
 
@@ -34,9 +51,9 @@ public class EHUHomaPageTesting
     { 
         homePage.NavigateToAboutPage();
 
-        Assert.That(driver.Url, Is.EqualTo(aboutUrl));
-        Assert.That(driver.Title, Is.EqualTo("About"));
-        Assert.That(driver.FindElement(By.XPath("//*[@class='subheader__breadcrumbs']/li/a")).Text, Is.EqualTo("Home"));
+        driver.Url.ShouldBe(aboutUrl);
+        driver.Title.ShouldBe("About");
+        driver.FindElement(By.XPath("//*[@class='subheader__breadcrumbs']/li/a")).Text.ShouldBe("Home");
     }
 
     [Test, Category("Search")]
@@ -45,11 +62,11 @@ public class EHUHomaPageTesting
     {
         homePage.Search(key);
 
-        Assert.That(driver.Url, Does.Contain(urlParams));
-        Assert.That(driver.Title, Is.EqualTo(pageTitle));
+        driver.Url.ShouldContain(urlParams);
+        driver.Title.ShouldBe(pageTitle);
 
         string searchResultsText = driver.FindElement(By.XPath("//*[@class='content search-results']")).Text;
-        Assert.That(Regex.IsMatch(searchResultsText, @"([Ss]tudy|[Pp]rograms*)"));
+        Regex.IsMatch(searchResultsText, @"([Ss]tudy|[Pp]rograms*)").ShouldBeTrue();
 
         driver.Quit();
     }
@@ -60,10 +77,10 @@ public class EHUHomaPageTesting
         homePage.ClickLanguageSwitch();
         homePage.SelectLtLanguage();
 
-        Assert.That(driver.Url, Is.EqualTo(ltUrl));
+        driver.Url.ShouldBe(homePage.LtUrl);
 
         string? language = driver.FindElement(By.TagName("html")).GetAttribute("lang");
-        Assert.That(language, Is.EqualTo("lt-LT"));
+        language.ShouldBe("lt-LT");
     }
 }
 
